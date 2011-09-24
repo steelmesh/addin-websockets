@@ -1,0 +1,30 @@
+{
+    "name": "steelmesh-websockets",
+    "description": "Websockets addin for Steelmesh",
+    "author": "Damon Oehlman <damon.oehlman@sidelab.com>",
+    "tags": ["steelmesh", "websockets"],
+    "version": "0.0.1",
+    
+    "main": "index.js",
+    "engines": { "node": "0.4.x" },
+        
+    "dependencies": {
+        "socket.io": "0.8.x"
+    },
+    
+    "devDependencies": {
+        "vows": "0.5.x"
+    },
+    
+    "repository": {
+        "type": "git",
+        "url": "http://github.com/steelmesh/steelmesh-websockets.git"
+    },
+    
+    "bugs": {
+        "web": "http://github.com/steelmesh/steelmesh-websockets/issues"
+    },
+    
+    "contributors": [
+    ]
+}
