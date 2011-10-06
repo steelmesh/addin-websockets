@@ -1,5 +1,6 @@
 var fs = require('fs'),
-    path = require('path');
+    path = require('path'),
+    clientScript;
 
 function findSocketHandlers(mesh, targetPath, callback) {
     // find files in the directory
@@ -13,7 +14,19 @@ function findSocketHandlers(mesh, targetPath, callback) {
 } // findSocketHandlers
 
 function provideSocketScript(req, res, next) {
+    res.contentType('assets/sockets.js');
     
+    if (clientScript) {
+        res.send(clientScript);
+    }
+    else {
+        fs.readFile(path.resolve(__dirname, 'assets/sockets.js'), 'utf8', function(err, data) {
+            if (! err) {
+                clientScript = data;
+                res.send(clientScript);
+            } // if
+        });
+    } // if..else
 }
 
 exports.install = function(mesh, instance) {
@@ -33,5 +46,5 @@ exports.install = function(mesh, instance) {
         });
     });
     
-    instance.get('/socket.js', provideSocketScript);
+    instance.get('/sockets.js', provideSocketScript);
 };
