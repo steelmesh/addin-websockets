@@ -3708,103 +3708,141 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
 
 
 
-var eveRemote = (function() {
-    var reRemote = /^remote\:?(.*)$/,
-        targets = [];
+if (typeof eve !== 'undefined') {
+    var remoteServer,
+        reSocketsScript = /sockets\.js$/i,
+        reHost = /^(https?\:\/\/.*?)\/.*$/;
     
-    /* internals */
-    
-    function createMessageRelay(target) {
-        // first check for the existance of a postMessage function
-        if (target && target.postMessage) {
-            return function() {
-                target.postMessage(this, '*');
-            };
-        }
-        // next check for an emit method (socket.io socket)
-        else if (target && target.emit) {
-            return function() {
-                target.emit.apply(target, ['event', this.name].concat(this.args));
-            };
-        }
+    var eveRemote = (function() {
+        var reRemote = /^remote\:?(.*)$/,
+            sockets = [],
+            targets = [];
         
-        return function() {
-            console.log('no handler found for target: ', target);
-        };
-    } // createMessageRelay
-    
-    function mapMessageToEve(evt) {
-        var eveData = {};
+        /* internals */
         
-        try {
-            eveData = JSON.parse(evt.data);
-        }
-        catch (e) {
-            // error parsing the data, 
-        } // try..catch
-        
-        if (eveData.name) {
-            eve.apply(eve, [eveData.name].concat(null, eveData.args, 'remote'));
-        } // if
-    } // mapMessageToEve
-    
-    function makeHandler(name, targets) {
-        
-        // create the target message relays
-        var relays = [],
-            handler,
-            ii;
+        function createMessageRelay(target) {
+            // first check for the existance of a postMessage function
+            if (target && target.postMessage) {
+                return function() {
+                    target.postMessage(this, '*');
+                };
+            }
+            // next check for an emit method (socket.io socket)
+            else if (target && target.emit) {
+                return function() {
+                    target.emit.apply(target, ['event', this.name].concat(this.args));
+                };
+            }
             
-        // create the message relay
-        for (ii = 0; ii < targets.length; ii++) {
-            relays[ii] = createMessageRelay(targets[ii]);
-        } // for
+            return function() {
+                console.log('no handler found for target: ', target);
+            };
+        } // createMessageRelay
         
-        eve.on(name, handler = function() {
-            var message = {
-                    name: eve.nt(),
-                    args:  Array.prototype.slice.call(arguments, 0)
-                },
-                lastArg = arguments[arguments.length - 1],
-                ii;
-
-            if (! reRemote.test(lastArg)) {
-                for (ii = 0; ii < message.args.length; ii++) {
-                    try {
-                        message.args[ii] = JSON.stringify(message.args[ii]);
-                    }
-                    catch (e) {
-                        console.log('could not stringify arg', message.args[ii]);
-                        message.args[ii] = null;
-                    } // try..catch
-                } // for
-
-                // post the message
-                for (ii = 0; ii < relays.length; ii++) {
-                    relays[ii].call(message);
-                } // for
+        function mapMessageToEve(evt) {
+            var eveData = {};
+            
+            try {
+                eveData = JSON.parse(evt.data);
+            }
+            catch (e) {
+                // error parsing the data, 
+            } // try..catch
+            
+            if (eveData.name) {
+                eve.apply(eve, [eveData.name].concat(null, eveData.args, 'remote'));
             } // if
+        } // mapMessageToEve
+        
+        function makeHandler(name, targets) {
+            
+            // create the target message relays
+            var relays = [],
+                handler,
+                ii;
+                
+            // create the message relay
+            for (ii = 0; ii < targets.length; ii++) {
+                relays[ii] = createMessageRelay(targets[ii]);
+            } // for
+            
+            eve.on(name, handler = function() {
+                var message = {
+                        name: eve.nt(),
+                        args:  Array.prototype.slice.call(arguments, 0)
+                    },
+                    lastArg = arguments[arguments.length - 1],
+                    ii;
+    
+                if (! reRemote.test(lastArg)) {
+                    for (ii = 0; ii < message.args.length; ii++) {
+                        try {
+                            message.args[ii] = JSON.stringify(message.args[ii]);
+                        }
+                        catch (e) {
+                            console.log('could not stringify arg', message.args[ii]);
+                            message.args[ii] = null;
+                        } // try..catch
+                    } // for
+    
+                    // post the message
+                    for (ii = 0; ii < relays.length; ii++) {
+                        relays[ii].call(message);
+                    } // for
+                } // if
+            });
+            
+            return handler;
+        } // makeHandler
+        
+        // route messages to eve
+        window.addEventListener('message', mapMessageToEve, false);
+        
+        // if socketio is available, the connect to the remote server detected
+        eve.on('socketio.avail', function(remoteServer) {
+            var socket = io.connect(remoteServer);
+            socket.on('connect', function() {
+                eve('socketio.connect', null, socket);
+    
+                socket.on('event', function(evtName) {
+                    eve.apply(eve, [evtName, null].concat(Array.prototype.slice.call(arguments, 1)));
+                });
+            });
+            
+            // add to the list of sockets
+            sockets.push(socket);
         });
         
-        return handler;
-    } // makeHandler
-    
-    // route messages to eve
-    window.addEventListener('message', mapMessageToEve, false);
-    
-    /* exports */
-    
-    return function(name, targets, previousHandler) {
-        if (previousHandler) {
-            eve.unbind(name, previousHandler);
-        } // if
+        /* exports */
         
-        // ensure we have an array for the targets
-        if (targets && (! Array.isArray(targets))) {
-            targets = [targets];
-        } // if
+        return function(name, targets, previousHandler) {
+            // if no targets have been specified, use the currently available sockets
+            targets = targets || sockets;
+            
+            // if we have a previous handler, unbind it now
+            if (previousHandler) {
+                eve.unbind(name, previousHandler);
+            } // if
+            
+            // ensure we have an array for the targets
+            if (targets && (! Array.isArray(targets))) {
+                targets = [targets];
+            } // if
+    
+            return targets && targets.length ? makeHandler(name, targets) : undefined;
+        };
+    })();
 
-        return targets && targets.length ? makeHandler(name, targets) : undefined;
-    };
-})();
+    
+    // find where this script was loaded from
+    for (var ii = 0; ii < document.scripts.length; ii++) {
+        var scriptSrc = document.scripts[ii].src;
+        
+        if (scriptSrc && reSocketsScript.test(scriptSrc)) {
+            remoteServer = scriptSrc.replace(reHost, '$1');
+        } // if
+    } // for
+    
+    eve('socketio.avail', null, remoteServer);
+} // if
 

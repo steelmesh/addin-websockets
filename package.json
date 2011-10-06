@@ -3,7 +3,7 @@
     "description": "Websockets addin for Steelmesh",
     "author": "Damon Oehlman <damon.oehlman@sidelab.com>",
     "tags": ["steelmesh", "websockets"],
-    "version": "0.0.3",
+    "version": "0.0.4",
     
     "main": "index.js",
     "engines": { "node": "0.4.x" },
