@@ -12,6 +12,10 @@ function findSocketHandlers(mesh, targetPath, callback) {
     });
 } // findSocketHandlers
 
+function provideSocketScript(req, res, next) {
+    
+}
+
 exports.install = function(mesh, instance) {
     var socketHandlers = [];
     
@@ -28,4 +32,6 @@ exports.install = function(mesh, instance) {
             handler.call(handler, mesh, socket);
         });
     });
+    
+    instance.get('/socket.js', provideSocketScript);
 };
