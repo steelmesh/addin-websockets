@@ -1,6 +1,7 @@
 var fs = require('fs'),
     path = require('path'),
-    clientScript;
+    clientScript,
+    socketHandlers = [];
 
 function findSocketHandlers(mesh, targetPath, callback) {
     // find files in the directory
@@ -30,21 +31,27 @@ function provideSocketScript(req, res, next) {
 }
 
 exports.install = function(mesh, instance) {
-    var socketHandlers = [];
-    
-    // ensure that we have socket.io installed
-    mesh.socketio = mesh.socketio || require('socket.io').listen(instance);
-    
     // find socket handlers
-    findSocketHandlers(mesh, path.join(mesh.targetPath, 'lib/sockets'), function(name, handler) {
+    findSocketHandlers(mesh, path.join(this.basePath, 'lib/sockets'), function(name, handler) {
         socketHandlers.push(handler);
     });
-
-    mesh.socketio.sockets.on('connection', function(socket) {
+    
+    mesh.on('socket', function(socket) {
+        console.log('socket connected, attaching handlers: ', socketHandlers);
+        
         socketHandlers.forEach(function(handler) {
             handler.call(handler, mesh, socket);
         });
     });
     
     instance.get('/sockets.js', provideSocketScript);
+};
+
+exports.installGlobal = function(mesh, instance) {
+    mesh.socketio = require('socket.io').listen(instance);
+    
+    mesh.socketio.sockets.on('connection', function(socket) {
+        console.log('socket connected');
+        mesh.emit('socket', socket);
+    });
 };
