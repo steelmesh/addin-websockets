@@ -1,15 +1,31 @@
+var fs = require('fs'),
+    path = require('path');
+
+function findSocketHandlers(mesh, targetPath, callback) {
+    // find files in the directory
+    fs.readdir(targetPath, function(err, files) {
+        (files || []).forEach(function(file) {
+            if (path.extname(file) == '.js') {
+                callback(path.basename(file, '.js'), require(path.join(targetPath, file)));
+            } // if
+        });
+    });
+} // findSocketHandlers
+
 exports.install = function(mesh, instance) {
-    var io = this.io = require('socket.io').listen(instance);
+    var socketHandlers = [];
     
-    io.sockets.on('connection', function(socket) {
-        mesh.emit('socket', socket);
-        
-        socket.on('event', function() {
-            var emitArgs = ['event'].concat(Array.prototype.slice.call(arguments, 0)).concat('sock:' + socket.id);
-            
-            // send the event to other connected listeners
-            // and add the client id to the end of the list so it can be distinguished on the client
-            socket.broadcast.emit.apply(socket, emitArgs);
+    // ensure that we have socket.io installed
+    mesh.socketio = mesh.socketio || require('socket.io').listen(instance);
+    
+    // find socket handlers
+    findSocketHandlers(mesh, path.join(mesh.targetPath, 'lib/sockets'), function(name, handler) {
+        socketHandlers.push(handler);
+    });
+
+    mesh.socketio.sockets.on('connection', function(socket) {
+        socketHandlers.forEach(function(handler) {
+            handler.call(handler, mesh, socket);
         });
     });
 };
