@@ -18,11 +18,11 @@
     
     "repository": {
         "type": "git",
-        "url": "http://github.com/steelmesh/steelmesh-websockets.git"
+        "url": "http://github.com/steelmesh/addin-websockets.git"
     },
     
     "bugs": {
-        "web": "http://github.com/steelmesh/steelmesh-websockets/issues"
+        "web": "http://github.com/steelmesh/addin-websockets/issues"
     },
     
     "contributors": [

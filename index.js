@@ -31,6 +31,8 @@ function provideSocketScript(req, res, next) {
 }
 
 exports.install = function(mesh, instance) {
+    var app = this;
+    
     // find socket handlers
     findSocketHandlers(mesh, path.join(this.basePath, 'lib/sockets'), function(name, handler) {
         socketHandlers.push(handler);
@@ -40,7 +42,7 @@ exports.install = function(mesh, instance) {
         console.log('socket connected, attaching handlers: ', socketHandlers);
         
         socketHandlers.forEach(function(handler) {
-            handler.call(handler, mesh, socket);
+            handler.call(handler, app, mesh, socket);
         });
     });
     
